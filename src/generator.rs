@@ -33,6 +33,8 @@ impl RoomType {
 struct Room {
     height: u32,
     width: u32,
+    x: u32,
+    y: u32,
     room_type: RoomType,
 }
 
@@ -87,24 +89,40 @@ impl Dungeon {
                 self.grid[start_y as usize][start_x as usize] = RoomType::Start.to_int() as i32;
                 self.grid[end_y as usize][end_x as usize] = RoomType::End.to_int() as i32;
 
-                self.wrap_room(
-                    &Room {
-                        height: 1,
-                        width: 1,
-                        room_type: RoomType::Start,
-                    },
-                    start_y,
-                    start_x,
-                );
-                self.wrap_room(
-                    &Room {
-                        height: 1,
-                        width: 1,
-                        room_type: RoomType::End,
-                    },
-                    end_y,
-                    end_x,
-                );
+                let start_room = &Room {
+                    height: 1,
+                    width: 1,
+                    x: end_x,
+                    y: end_y,
+                    room_type: RoomType::Start,
+                };
+                self.wrap_room(start_room, start_y, start_x);
+                let end_room = &Room {
+                    height: 1,
+                    width: 1,
+                    x: end_x,
+                    y: end_y,
+                    room_type: RoomType::End,
+                };
+                self.wrap_room(end_room, end_y, end_x);
+
+                let placed_new = Room {
+                    height: 3,
+                    width: 3,
+                    x: start_x - 1,
+                    y: start_y - 3,
+                    room_type: RoomType::Start,
+                };
+
+                let placed_end = Room {
+                    height: 3,
+                    width: 3,
+                    x: end_x - 1,
+                    y: end_y - 1,
+                    room_type: RoomType::End,
+                };
+                self.placed_rooms.push(placed_new.clone());
+                self.placed_rooms.push(placed_end.clone());
 
                 valid_placement = true;
                 self.painter.add_step(self.grid.clone());
@@ -173,7 +191,12 @@ impl Dungeon {
 
                     //                    println!("{}", self.grid[(y) as usize][(x) as usize]);
                     valid_placement = true;
-                    self.placed_rooms.push(room.clone());
+                    let mut placed_room = room.clone();
+                    placed_room.x = x - 1;
+                    placed_room.y = y - 1;
+                    placed_room.width += 2;
+                    placed_room.height += 2;
+                    self.placed_rooms.push(placed_room);
                     self.painter.add_step(self.grid.clone());
                 }
             }
@@ -213,7 +236,7 @@ impl Dungeon {
         }
     }
 
-    fn is_valid_hall(&mut self, y: u32, x: u32) -> bool {
+    fn is_valid_hall(&self, y: u32, x: u32) -> bool {
         let mut valid_sides = 0;
 
         if y >= self.height || x >= self.width {
@@ -331,6 +354,211 @@ impl Dungeon {
             }
         }
     }
+
+    fn is_valid_con(&self, y: u32, x: u32) -> bool {
+        let mut valid_sides = 0;
+
+        if y >= self.height || x >= self.width {
+            return false;
+        }
+
+        if y > 0 && self.grid[(y - 1) as usize][x as usize] == RoomType::Hall.to_int() as i32 {
+            valid_sides += 1;
+        }
+        if y < self.height - 1
+            && self.grid[(y + 1) as usize][x as usize] == RoomType::Hall.to_int() as i32
+        {
+            valid_sides += 1;
+        }
+        if x > 0 && self.grid[y as usize][(x - 1) as usize] == RoomType::Hall.to_int() as i32 {
+            valid_sides += 1;
+        }
+        if x < self.width - 1
+            && self.grid[y as usize][(x + 1) as usize] == RoomType::Hall.to_int() as i32
+        {
+            valid_sides += 1;
+        }
+        if self.grid[y as usize][x as usize] != 0 {
+            return false;
+        }
+
+        valid_sides == 1
+    }
+
+    fn connect_rooms_to_halls(&mut self) {
+        let mut rng = rand::thread_rng();
+        let mut connected_rooms: Vec<usize> = Vec::new();
+        let mut unconnected_rooms: Vec<usize> = (0..self.placed_rooms.len()).collect();
+        let max_attempts = 1000;
+        let mut attempts = 0;
+
+        while unconnected_rooms.len() > 0 && attempts < max_attempts {
+            attempts += 1;
+            let room_index = rng.gen_range(0..unconnected_rooms.len());
+            let room_id = unconnected_rooms[room_index];
+            let room = &self.placed_rooms[room_id];
+
+            let mut valid_wall_cells: Vec<(u32, u32)> = Vec::new();
+
+            for i in 0..room.height {
+                for j in 0..room.width {
+                    let y = room.y + i;
+                    let x = room.x + j;
+
+                    if self.is_valid_con(y, x)
+                        && (y != room.y || x != room.x)
+                        && (y != room.y + room.height - 1 || x != room.x + room.width - 1)
+                        && (y != room.y || x != room.x + room.width - 1)
+                        && (y != room.y + room.height - 1 || x != room.x)
+                    {
+                        valid_wall_cells.push((y, x));
+                    }
+                }
+            }
+
+            if valid_wall_cells.len() > 0 {
+                let hall_index = rng.gen_range(0..valid_wall_cells.len());
+                let (hall_y, hall_x) = valid_wall_cells[hall_index];
+
+                self.grid[hall_y as usize][hall_x as usize] = RoomType::Hall.to_int() as i32;
+
+                if rng.gen_ratio(2, 4) {
+                    connected_rooms.push(room_id);
+                    unconnected_rooms.remove(room_index);
+                }
+            }
+        }
+        println!("Connected rooms: {:?}", connected_rooms.len());
+    }
+
+    fn are_start_and_end_connected(&self) -> bool {
+        let start_room = &self.placed_rooms[0];
+        let end_room = &self.placed_rooms[1];
+
+        let start_x = start_room.x + 1;
+        let start_y = start_room.y + 1;
+        let end_x = end_room.x + 1;
+        let end_y = end_room.y + 1;
+
+        let mut visited: Vec<Vec<bool>> =
+            vec![vec![false; self.width as usize]; self.height as usize];
+        let mut queue: Vec<(i32, i32)> = Vec::new();
+
+        queue.push((start_x as i32, start_y as i32));
+        visited[start_y as usize][start_x as usize] = true;
+
+        while !queue.is_empty() {
+            let (x, y) = queue.remove(0);
+
+            if x == end_x as i32 && y == end_y as i32 {
+                return true;
+            }
+
+            let neighbors = vec![(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)];
+
+            for (nx, ny) in neighbors {
+                if nx >= 0 && nx < self.width as i32 && ny >= 0 && ny < self.height as i32 {
+                    if !visited[ny as usize][nx as usize]
+                        && self.grid[ny as usize][nx as usize] != RoomType::Wall.to_int() as i32
+                    {
+                        visited[ny as usize][nx as usize] = true;
+                        queue.push((nx, ny));
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    fn add_start_and_end_halls(&mut self) {
+        let start_room = &self.placed_rooms[0];
+        let end_room = &self.placed_rooms[1];
+
+        // Add hall from start room to the north
+        for x in start_room.x..start_room.x + start_room.width {
+            self.grid[start_room.y as usize][x as usize] = RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from start room to the south
+        for x in start_room.x..start_room.x + start_room.width {
+            self.grid[(start_room.y + start_room.height - 1) as usize][x as usize] =
+                RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from start room to the west
+        for y in start_room.y..start_room.y + start_room.height {
+            self.grid[y as usize][start_room.x as usize] = RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from start room to the east
+        for y in start_room.y..start_room.y + start_room.height {
+            self.grid[y as usize][(start_room.x + start_room.width - 1) as usize] =
+                RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from end room to the north
+        for x in end_room.x..end_room.x + end_room.width {
+            self.grid[end_room.y as usize][x as usize] = RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from end room to the south
+        for x in end_room.x..end_room.x + end_room.width {
+            self.grid[(end_room.y + end_room.height - 1) as usize][x as usize] =
+                RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from end room to the west
+        for y in end_room.y..end_room.y + end_room.height {
+            self.grid[y as usize][end_room.x as usize] = RoomType::Hall.to_int() as i32;
+        }
+
+        // Add hall from end room to the east
+        for y in end_room.y..end_room.y + end_room.height {
+            self.grid[y as usize][(end_room.x + end_room.width - 1) as usize] =
+                RoomType::Hall.to_int() as i32;
+        }
+    }
+
+    fn remove_dead_ends(&mut self) {
+        let mut done = false;
+
+        while !done {
+            done = true;
+
+            for x in 0..self.width - 1 {
+                for y in 0..self.height - 1 {
+                    if self.grid[y as usize][x as usize] != RoomType::Hall.to_int() as i32 {
+                        continue;
+                    }
+
+                    // If it only has one exit, it's a dead end.
+                    let mut exits = 0;
+                    let dirs: Vec<(i32, i32)> = vec![(0, 1), (0, -1), (1, 0), (-1, 0)];
+                    for dir in dirs {
+                        let y = (y as i32 + dir.1) as i32;
+                        let x = (x as i32 + dir.0) as i32;
+
+                        if y >= 0
+                            && y < self.height as i32
+                            && x >= 0
+                            && x < self.width as i32
+                            && self.grid[y as usize][x as usize] != RoomType::Wall.to_int() as i32
+                        {
+                            exits += 1;
+                        }
+                    }
+
+                    if exits > 1 {
+                        continue;
+                    }
+
+                    done = false;
+                    self.grid[y as usize][x as usize] = RoomType::Wall.to_int() as i32;
+                }
+            }
+        }
+    }
 }
 
 pub fn new_dungeon(height: u32, width: u32) -> Dungeon {
@@ -344,6 +572,8 @@ pub fn new_dungeon(height: u32, width: u32) -> Dungeon {
         let room = Room {
             height: rng.gen_range(2..=5),
             width: rng.gen_range(2..=5),
+            x: 0,
+            y: 0,
             room_type: match rng.gen_range(4..=7) {
                 4 => RoomType::Boss,
                 5 => RoomType::Shop,
@@ -363,6 +593,12 @@ pub fn new_dungeon(height: u32, width: u32) -> Dungeon {
         let random_y = rng.gen_range(0..height);
         d.make_halls((random_x, random_y));
     }
+    d.connect_rooms_to_halls();
+    d.add_start_and_end_halls();
+    d.remove_dead_ends();
+
+    let connected = d.are_start_and_end_connected();
+    println!("Connected: {}", connected);
     println!("map created");
     d.painter.paint();
     d.painter.paint_image(&d.grid);
