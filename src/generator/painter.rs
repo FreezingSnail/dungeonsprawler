@@ -22,21 +22,61 @@ fn create_image_from_values(values: &Vec<Vec<i32>>) -> ImageBuffer<Rgb<u8>, Vec<
     for (y, row) in values.iter().enumerate() {
         for (x, &value) in row.iter().enumerate() {
             // Map the value to an RGB color
-            let color = match value {
-                -1 => Rgb([0, 0, 0]),       // Black
-                0 => Rgb([255, 255, 255]),  // White
-                2 => Rgb([0, 0, 255]),      // Blue
-                3 => Rgb([255, 0, 0]),      // Red
-                4 => Rgb([255, 255, 0]),    // Yellow
-                5 => Rgb([255, 165, 0]),    // Orange
-                6 => Rgb([128, 0, 128]),    // Purple
-                7 => Rgb([0, 255, 0]),      // Green
-                8 => Rgb([0, 255, 255]),    // Cyan
-                9 => Rgb([255, 0, 255]),    // Magenta
-                10 => Rgb([255, 192, 203]), // Pink
-                11 => Rgb([0, 128, 0]),     // Dark Green
-                _ => Rgb([128, 128, 128]),  // Gray
-            };
+            let color = to_color(value);
+
+            // Set the pixel color in the image
+            for i in 0..5 {
+                for j in 0..5 {
+                    image.put_pixel((x as u32 * 5) + i, (y as u32 * 5) + j, color);
+                }
+            }
+        }
+    }
+    // println!(
+    //     "Image created {}x{}x{}",
+    //     image.width(),
+    //     image.height(),
+    //     image.pixels().len()
+    // );
+
+    image
+}
+
+fn to_color(value: i32) -> Rgb<u8> {
+    let color = match value {
+        0 => Rgb([0, 0, 0]), // Black
+        //1 => Rgb([255, 255, 255]),
+        1 => Rgb([0, 0, 0]),        // White
+        2 => Rgb([128, 128, 128]),  // Blue
+        3 => Rgb([255, 0, 0]),      // Red
+        4 => Rgb([255, 255, 0]),    // Yellow
+        5 => Rgb([255, 165, 0]),    // Orange
+        6 => Rgb([128, 0, 128]),    // Purple
+        7 => Rgb([0, 255, 0]),      // Green
+        8 => Rgb([0, 255, 255]),    // Cyan
+        9 => Rgb([255, 0, 255]),    // Magenta
+        10 => Rgb([255, 192, 203]), // Pink
+        11 => Rgb([0, 128, 0]),     // Dark Green
+        _ => Rgb([(value * 3) as u8, (value * 12) as u8, (value * 12) as u8]), // Gray
+    };
+    color
+}
+
+fn create_image_from_values_u(values: &Vec<Vec<u32>>) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+    // Determine the dimensions of the image
+    let height = values[0].len();
+    let width = values.len();
+
+    //println!("Width: {}, Height: {}", width, height);
+
+    // Create a new image buffer
+    let mut image = ImageBuffer::new(width as u32 * 5, height as u32 * 5);
+
+    // Iterate over the values and set the corresponding pixel color in the image
+    for (y, row) in values.iter().enumerate() {
+        for (x, &value) in row.iter().enumerate() {
+            // Map the value to an RGB color
+            let color = to_color(value as i32);
 
             // Set the pixel color in the image
             for i in 0..5 {
@@ -136,8 +176,13 @@ impl Painter {
         let _ = create_gif(&self.steps, "dungeon.gif");
     }
 
-    pub fn paint_image(&self, map: &Vec<Vec<i32>>) {
+    pub fn paint_image(&self, map: &Vec<Vec<i32>>, name: &str) {
         let image = create_image_from_values(&map);
-        let _ = save_image_to_file(&image, "dungeon_final.png");
+        let _ = save_image_to_file(&image, name);
+    }
+
+    pub fn paint_image_u(&self, map: &Vec<Vec<u32>>, name: &str) {
+        let image = create_image_from_values_u(&map);
+        let _ = save_image_to_file(&image, name);
     }
 }
