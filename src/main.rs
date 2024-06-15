@@ -3,6 +3,7 @@ use std::env;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
-    let dungeon = generator::new_dungeon(200, 200, 100);
+    generator::new_dungeon(9, 9, 2);
+
     //dungeon.print();
 }
