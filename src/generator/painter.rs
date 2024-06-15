@@ -4,6 +4,7 @@ use image::{ImageBuffer, ImageEncoder, Rgb};
 use std::fs::File;
 
 pub struct Painter {
+    disable: bool,
     steps: Vec<Vec<Vec<i32>>>,
 }
 
@@ -80,9 +81,9 @@ fn create_gif(steps: &Vec<Vec<Vec<i32>>>, file_path: &str) -> Result<(), std::io
             1,
         );
         // Add the frame to the GIF
-        for _ in 0..3 {
-            encoder.write_frame(&gif_frame).unwrap();
-        }
+        //for _ in 0..3 {
+        encoder.write_frame(&gif_frame).unwrap();
+        //}
     }
 
     Ok(())
@@ -111,14 +112,27 @@ pub fn save_image_to_file(
 
 impl Painter {
     pub fn new() -> Painter {
-        Painter { steps: Vec::new() }
+        Painter {
+            steps: Vec::new(),
+            disable: true,
+        }
+    }
+
+    pub fn enable(&mut self) {
+        self.disable = false;
     }
 
     pub fn add_step(&mut self, step: Vec<Vec<i32>>) {
+        if self.disable {
+            return;
+        }
         self.steps.push(step);
     }
 
     pub fn paint(&self) {
+        if self.disable {
+            return;
+        }
         let _ = create_gif(&self.steps, "dungeon.gif");
     }
 

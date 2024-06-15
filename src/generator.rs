@@ -2,7 +2,7 @@ use rand::Rng;
 
 mod painter;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum RoomType {
     Wall,
     Hall,
@@ -29,7 +29,7 @@ impl RoomType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Room {
     height: u32,
     width: u32,
@@ -38,6 +38,7 @@ struct Room {
 
 pub struct Dungeon {
     rooms: Vec<Room>,
+    placed_rooms: Vec<Room>,
     height: u32,
     width: u32,
     grid: Vec<Vec<i32>>,
@@ -55,6 +56,7 @@ impl Dungeon {
         }
         Dungeon {
             rooms,
+            placed_rooms: Vec::new(),
             height,
             width,
             grid,
@@ -171,6 +173,7 @@ impl Dungeon {
 
                     //                    println!("{}", self.grid[(y) as usize][(x) as usize]);
                     valid_placement = true;
+                    self.placed_rooms.push(room.clone());
                     self.painter.add_step(self.grid.clone());
                 }
             }
@@ -213,7 +216,7 @@ impl Dungeon {
     fn is_valid_hall(&mut self, y: u32, x: u32) -> bool {
         let mut valid_sides = 0;
 
-        if self.grid[y as usize][x as usize] != 0 {
+        if y >= self.height || x >= self.width {
             return false;
         }
 
@@ -229,6 +232,10 @@ impl Dungeon {
         if x < self.width - 1 && self.grid[y as usize][(x + 1) as usize] == 0 {
             valid_sides += 1;
         }
+        if self.grid[y as usize][x as usize] != 0 {
+            return false;
+        }
+
         valid_sides >= 3
     }
 
@@ -256,11 +263,12 @@ impl Dungeon {
 
         let random_spot = rng.gen_range(0..cells.len());
         let (x, y) = cells[random_spot];
+        let mut last_dr: (i32, i32) = (0, 0);
 
         while cells.len() > 0 {
-            let mut valid_halls: Vec<(u32, u32)> = Vec::new();
+            let mut valid_halls: Vec<(i32, i32)> = Vec::new();
+            let cell = cells.last().unwrap();
             for dir in &dirs {
-                let cell = cells.last().unwrap();
                 let new_x = cell.0 as i32 + dir.0;
                 let new_y = cell.1 as i32 + dir.1;
                 if new_x >= 0
@@ -269,19 +277,48 @@ impl Dungeon {
                     && new_y < self.height as i32
                 {
                     if self.is_valid_hall(new_y as u32, new_x as u32) {
-                        valid_halls.push((new_x as u32, new_y as u32));
+                        valid_halls.push((dir.0, dir.1));
                     }
                 }
             }
             if valid_halls.len() > 0 {
-                let random_spot = rng.gen_range(0..valid_halls.len());
-                let (x, y) = valid_halls[random_spot];
-                cells.push((x, y));
-                self.grid[y as usize][x as usize] = RoomType::Hall.to_int() as i32;
+                let mut next_dr: (i32, i32) = (0, 0);
+
+                if valid_halls.contains(&last_dr) && rng.gen_ratio(3, 4) {
+                    next_dr = last_dr;
+                } else {
+                    let random_spot = rng.gen_range(0..valid_halls.len());
+                    next_dr = valid_halls[random_spot];
+                }
+                let mut next_cell = (
+                    (cell.0 as i32 + (next_dr.0)) as u32,
+                    (cell.1 as i32 + (next_dr.1)) as u32,
+                );
+                self.make_hall(next_cell);
+
+                let next_next_cell = (
+                    (cell.0 as i32 + (next_dr.0 + next_dr.0)) as u32,
+                    (cell.1 as i32 + (next_dr.1 + next_dr.1)) as u32,
+                );
+                if self.is_valid_hall(next_next_cell.1, next_next_cell.0) {
+                    self.make_hall(next_next_cell);
+                    next_cell = next_next_cell;
+                }
+
+                last_dr = next_dr;
+                cells.push(next_cell);
                 self.painter.add_step(self.grid.clone());
             } else {
                 cells.pop();
             }
+        }
+    }
+
+    fn make_hall(&mut self, position: (u32, u32)) {
+        let (x, y) = position;
+        if y < self.height && x < self.width {
+            self.grid[y as usize][x as usize] = RoomType::Hall.to_int() as i32;
+            self.painter.add_step(self.grid.clone());
         }
     }
 
@@ -303,10 +340,10 @@ pub fn new_dungeon(height: u32, width: u32) -> Dungeon {
     d.painter.add_step(d.grid.clone());
     d.place_start_and_end();
 
-    for _ in 0..100 {
+    for _ in 0..40 {
         let room = Room {
-            height: rng.gen_range(2..=10),
-            width: rng.gen_range(2..=8),
+            height: rng.gen_range(2..=5),
+            width: rng.gen_range(2..=5),
             room_type: match rng.gen_range(4..=7) {
                 4 => RoomType::Boss,
                 5 => RoomType::Shop,
@@ -327,7 +364,7 @@ pub fn new_dungeon(height: u32, width: u32) -> Dungeon {
         d.make_halls((random_x, random_y));
     }
     println!("map created");
-    //d.painter.paint();
+    d.painter.paint();
     d.painter.paint_image(&d.grid);
     d
 }
