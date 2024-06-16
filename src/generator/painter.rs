@@ -10,8 +10,8 @@ pub struct Painter {
 
 fn create_image_from_values(values: &Vec<Vec<i32>>) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     // Determine the dimensions of the image
-    let height = values[0].len();
-    let width = values.len();
+    let height = values.len();
+    let width = values[0].len();
 
     //println!("Width: {}, Height: {}", width, height);
 
@@ -45,8 +45,8 @@ fn create_image_from_values(values: &Vec<Vec<i32>>) -> ImageBuffer<Rgb<u8>, Vec<
 fn to_color(value: i32) -> Rgb<u8> {
     let color = match value {
         0 => Rgb([0, 0, 0]), // Black
-        1 => Rgb([255, 255, 255]),
-        //1 => Rgb([0, 0, 0]),        // White
+        //1 => Rgb([255, 255, 255]),
+        1 => Rgb([0, 0, 0]),        // White
         2 => Rgb([128, 128, 128]),  // Blue
         3 => Rgb([0, 255, 0]),      // Green
         4 => Rgb([255, 0, 0]),      // Red
@@ -64,8 +64,8 @@ fn to_color(value: i32) -> Rgb<u8> {
 
 fn create_image_from_values_u(values: &Vec<Vec<u32>>) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     // Determine the dimensions of the image
-    let height = values[0].len();
-    let width = values.len();
+    let height = values.len();
+    let width = values[0].len();
 
     //println!("Width: {}, Height: {}", width, height);
 

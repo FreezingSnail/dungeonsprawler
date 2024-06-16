@@ -1,8 +1,5 @@
 use rand::Rng;
-use std::{
-    collections::{HashMap, HashSet},
-    f32::consts::E,
-};
+use std::collections::{HashMap, HashSet};
 
 mod painter;
 
@@ -156,7 +153,7 @@ impl Dungeon {
 
             let gen_width = self.width - room.width - buffer;
             let gen_height = self.height - room.height - buffer;
-            while !valid_placement && trys < attempts {
+            while !valid_placement && trys < attempts && gen_width > buffer && gen_height > buffer {
                 trys += 1;
                 let x = rng.gen_range(buffer..gen_width);
                 let y = rng.gen_range(buffer..gen_height);
@@ -363,16 +360,18 @@ impl Dungeon {
 
     fn connect_regions(&mut self) {
         let mut connector_regions: HashMap<(u32, u32), HashSet<u32>> = HashMap::new();
+        let mut connector_types: HashMap<(u32, u32), HashSet<u32>> = HashMap::new();
         let dirs: Vec<(i32, i32)> = vec![(0, 1), (0, -1), (1, 0), (-1, 0)];
 
-        for x in 0..self.height {
-            for y in 0..self.width {
+        for x in 0..self.width {
+            for y in 0..self.height {
                 // Can't already be part of a region.
                 if self.regions[y as usize][x as usize] != RoomType::Empty.to_int() as u32 {
                     continue;
                 }
 
                 let mut regions: HashSet<u32> = HashSet::new();
+                let mut room_types: HashSet<u32> = HashSet::new();
 
                 for (x2, y2) in &dirs {
                     let target_y = y as i32 + y2;
@@ -385,6 +384,8 @@ impl Dungeon {
                         let region = self.regions[target_y as usize][target_x as usize];
                         if region != RoomType::Empty.to_int() as u32 {
                             regions.insert(region);
+                            room_types
+                                .insert(self.grid[target_y as usize][target_x as usize] as u32);
                         }
                     } else {
                     }
@@ -395,6 +396,7 @@ impl Dungeon {
                 }
 
                 connector_regions.insert((x, y), regions.clone());
+                connector_types.insert((x, y), room_types.clone());
             }
         }
 
@@ -421,8 +423,20 @@ impl Dungeon {
             let connector_index = rng.gen_range(0..connectors.len());
             let (x, y) = connectors[connector_index];
 
+            let region_types = connector_types.get(&(x, y)).unwrap();
+
+            let mut locked_door = false;
             // join the regions on either side of the connector
-            self.grid[y as usize][x as usize] = RoomType::Hall.to_int() as i32;
+            for t in region_types {
+                if *t == RoomType::End.to_int() as u32 || *t == RoomType::Treasure.to_int() as u32 {
+                    locked_door = true;
+                }
+            }
+            if locked_door {
+                self.grid[y as usize][x as usize] = RoomType::LockedDoor.to_int() as i32;
+            } else {
+                self.grid[y as usize][x as usize] = RoomType::Hall.to_int() as i32;
+            }
             self.regions[y as usize][x as usize] = (self.regions_count + 1) as u32;
 
             // Merge the connected regions. We'll pick one region (arbitrarily) and
@@ -478,7 +492,7 @@ impl Dungeon {
                 //println!("removing");
                 // This connector isn't needed, but connect it occasionally so that the
                 // dungeon isn't singly-connected.
-                if rng.gen_ratio(1, 5) {
+                if !locked_door && rng.gen_ratio(1, 5) {
                     //  println!("----- ADDING EXTRA");
                     self.grid[v.1 as usize][v.0 as usize] = RoomType::Hall.to_int() as i32;
                     self.regions[v.1 as usize][v.0 as usize] = self.regions_count as u32;
@@ -597,6 +611,15 @@ impl Dungeon {
             }
         }
     }
+
+    fn print(&self) {
+        for row in &self.grid {
+            for cell in row {
+                print!("{},", cell);
+            }
+            println!();
+        }
+    }
 }
 
 fn distance((x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> f64 {
@@ -618,8 +641,8 @@ pub fn new_dungeon(height: u32, width: u32, rooms: u32) -> Dungeon {
 
     for _ in 0..rooms {
         let room = Room {
-            height: rng.gen_range(1..=3),
-            width: rng.gen_range(1..=3),
+            height: rng.gen_range(1..=6),
+            width: rng.gen_range(1..=6),
             x: 0,
             y: 0,
             room_type: match rng.gen_range(4..=7) {
@@ -635,8 +658,11 @@ pub fn new_dungeon(height: u32, width: u32, rooms: u32) -> Dungeon {
 
     d.generate(2);
 
-    for x in 0..d.height {
-        for y in 0..d.width {
+    for x in 0..d.width {
+        for y in 0..d.height {
+            println!("height{} width{}", x, y);
+            println!("grid height {} width {}", d.height, d.width);
+            println!("grid height {} width {}", d.grid.len(), d.grid[0].len());
             if d.grid[y as usize][x as usize] == RoomType::Empty.to_int() as i32 {
                 d.make_halls((x, y));
             }
@@ -644,10 +670,10 @@ pub fn new_dungeon(height: u32, width: u32, rooms: u32) -> Dungeon {
     }
     d.painter.paint_image(&d.grid, "dungeon_final.png");
     d.painter.paint_image_u(&d.regions, "dungeon_regions.png");
-
+    d.fill_with_walls();
     d.connect_regions();
 
-    let mut connected = d.are_start_and_end_connected();
+    let connected = d.are_start_and_end_connected();
     // let mut attempts = 0;
     // while !connected && attempts < 10 {
     //     for x in 0..d.height {
@@ -664,15 +690,14 @@ pub fn new_dungeon(height: u32, width: u32, rooms: u32) -> Dungeon {
     //     //     connected = d.are_start_and_end_connected();
     // }
 
-    //d.fill_with_walls();
-    //d.remove_dead_ends();
+    d.remove_dead_ends();
 
     println!("Connected: {}", connected);
     println!("map created");
     d.painter.paint();
     d.painter.paint_image(&d.grid, "dungeon_final.png");
     d.painter.paint_image_u(&d.regions, "dungeon_regions.png");
-    //d.print();
+    d.print();
 
     d
 }
