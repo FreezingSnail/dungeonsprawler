@@ -2,6 +2,7 @@ use rand::Rng;
 use std::collections::{HashMap, HashSet};
 
 mod painter;
+pub mod paramaters;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RoomType {
@@ -48,14 +49,16 @@ pub struct Dungeon {
     placed_rooms: Vec<Room>,
     height: u32,
     width: u32,
-    grid: Vec<Vec<i32>>,
+    pub grid: Vec<Vec<i32>>,
     regions_count: i32,
     regions: Vec<Vec<u32>>,
     painter: painter::Painter,
 }
 
 impl Dungeon {
-    fn new(height: u32, width: u32) -> Dungeon {
+    fn new(parameters: &paramaters::DungeonOptions) -> Dungeon {
+        let width = parameters.width;
+        let height = parameters.height;
         let rooms = Vec::new();
         let grid = vec![vec![0; width as usize]; height as usize];
 
@@ -632,17 +635,17 @@ pub fn connected(d: Dungeon) -> bool {
     d.are_start_and_end_connected()
 }
 
-pub fn new_dungeon(height: u32, width: u32, rooms: u32) -> Dungeon {
-    let mut d = Dungeon::new(height, width);
+fn gen_floor(paramaters: &paramaters::DungeonOptions) -> Option<Dungeon> {
+    let mut d = Dungeon::new(&paramaters);
     let mut rng = rand::thread_rng();
 
     d.painter.add_step(d.grid.clone());
     d.place_start_and_end();
 
-    for _ in 0..rooms {
+    for _ in 0..paramaters.amount_of_rooms {
         let room = Room {
-            height: rng.gen_range(1..=6),
-            width: rng.gen_range(1..=6),
+            height: rng.gen_range(paramaters.room_size_low..paramaters.room_size_high),
+            width: rng.gen_range(paramaters.room_size_low..paramaters.room_size_high),
             x: 0,
             y: 0,
             room_type: match rng.gen_range(4..=7) {
@@ -660,44 +663,49 @@ pub fn new_dungeon(height: u32, width: u32, rooms: u32) -> Dungeon {
 
     for x in 0..d.width {
         for y in 0..d.height {
-            println!("height{} width{}", x, y);
-            println!("grid height {} width {}", d.height, d.width);
-            println!("grid height {} width {}", d.grid.len(), d.grid[0].len());
             if d.grid[y as usize][x as usize] == RoomType::Empty.to_int() as i32 {
                 d.make_halls((x, y));
             }
         }
     }
-    d.painter.paint_image(&d.grid, "dungeon_final.png");
-    d.painter.paint_image_u(&d.regions, "dungeon_regions.png");
     d.fill_with_walls();
     d.connect_regions();
-
     let connected = d.are_start_and_end_connected();
-    // let mut attempts = 0;
-    // while !connected && attempts < 10 {
-    //     for x in 0..d.height {
-    //         for y in 0..d.width {
-    //             if d.grid[y as usize][x as usize] == RoomType::Empty.to_int() as i32 {
-    //                 d.make_halls((x, y));
-    //             }
-    //         }
-    //     }
-    //     d.connect_regions();
+    if !connected {
+        return None;
+    }
 
-    //     attempts += 1;
-    //     //     d.connect_rooms_to_halls();
-    //     //     connected = d.are_start_and_end_connected();
-    // }
-
-    d.remove_dead_ends();
-
-    println!("Connected: {}", connected);
-    println!("map created");
+    if paramaters.sparse {
+        d.remove_dead_ends();
+    }
     d.painter.paint();
-    d.painter.paint_image(&d.grid, "dungeon_final.png");
-    d.painter.paint_image_u(&d.regions, "dungeon_regions.png");
-    d.print();
 
-    d
+    Some(d)
+}
+
+pub fn new_dungeon(paramaters: &paramaters::DungeonParameters) -> Vec<Vec<Dungeon>> {
+    let mut dungeons: Vec<Vec<Dungeon>> = Vec::new();
+
+    for i in 0..paramaters.dungeons.len() {
+        let mut floors: Vec<Dungeon> = Vec::new();
+        while floors.len() < paramaters.dungeons[i].count as usize {
+            let d = gen_floor(&paramaters.dungeons[i]);
+            if d.is_some() {
+                floors.push(d.unwrap());
+            }
+        }
+        dungeons.push(floors);
+    }
+
+    if paramaters.include_images {
+        for (i, d) in dungeons.iter().enumerate() {
+            for (j, d) in d.iter().enumerate() {
+                let name = format!("dungeon_{}{}.png", paramaters.dungeons[i].name, j);
+                let name = paramaters.file_path.clone() + &name;
+                d.painter.paint_image(&d.grid, &name);
+            }
+        }
+    }
+
+    dungeons
 }
