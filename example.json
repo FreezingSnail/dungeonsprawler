@@ -1,0 +1,20 @@
+{
+    "dungeons": [
+      {
+        "name": "test_dungeon",
+        "height": 16,
+        "width": 8,
+        "room_types": [],
+        "amount_of_rooms": 2,
+        "room_size_low": 1,
+        "room_size_high": 3,
+        "start_finish_min_distance": 5,
+        "room_padding_density": 3,
+        "sparse": false,
+        "count": 2
+      }
+    ],
+    "file_path": "dist/",
+    "output_format": "fx",
+    "include_images": true
+}
