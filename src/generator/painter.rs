@@ -32,12 +32,6 @@ fn create_image_from_values(values: &Vec<Vec<i32>>) -> ImageBuffer<Rgb<u8>, Vec<
             }
         }
     }
-    // println!(
-    //     "Image created {}x{}x{}",
-    //     image.width(),
-    //     image.height(),
-    //     image.pixels().len()
-    // );
 
     image
 }
