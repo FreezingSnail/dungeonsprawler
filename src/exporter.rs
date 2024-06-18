@@ -26,6 +26,9 @@ pub fn write_dungeons_to_file(
     }
 
     let filename = format!("{}{}_maps.txt", filename, name);
+    if let Some(parent_dir) = std::path::Path::new(&filename).parent() {
+        std::fs::create_dir_all(parent_dir)?;
+    }
     let mut file = File::create(filename)?;
 
     for (i, d) in dungeon_values.iter().enumerate() {

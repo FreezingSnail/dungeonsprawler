@@ -24,6 +24,7 @@ pub struct DungeonOptions {
     pub height: u32,
     pub width: u32,
     pub room_types: Vec<String>,
+    pub extra_room_types: u32,
     pub amount_of_rooms: u32,
     pub room_size_low: u32,
     pub room_size_high: u32,
