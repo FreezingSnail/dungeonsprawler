@@ -38,8 +38,8 @@ fn create_image_from_values(values: &Vec<Vec<i32>>) -> ImageBuffer<Rgb<u8>, Vec<
 
 fn to_color(value: i32) -> Rgb<u8> {
     let color = match value {
-        0 => Rgb([0, 0, 0]), // Black
-        //1 => Rgb([255, 255, 255]),
+        //0 => Rgb([0, 0, 0]), // Black
+        0 => Rgb([120, 120, 120]),
         1 => Rgb([0, 0, 0]),        // White
         2 => Rgb([128, 128, 128]),  // Blue
         3 => Rgb([0, 255, 0]),      // Green
