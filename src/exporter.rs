@@ -13,13 +13,17 @@ pub fn write_dungeons_to_file(
 
     for d in data {
         let mut dungeon = String::new();
-        for row in &d.grid {
+        for (i, row) in d.grid.iter().enumerate() {
             let row_str = row
                 .iter()
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(",");
+
             dungeon.push_str(&row_str);
+            if i < d.grid.len() - 1 {
+                dungeon.push_str(",");
+            }
             dungeon.push_str("\n");
         }
         dungeon_values.push(dungeon);

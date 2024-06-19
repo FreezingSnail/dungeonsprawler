@@ -90,9 +90,6 @@ Currently a special tile is placed at the connector for treasure rooms and the f
 
 
 ### Planned Feature:
- - "Raycast" format
-    -  The raycast lib dictates a different numbering for tiles that is current not supported
-
 - Room type spec constraints
     -  currently you can't control what type of rooms.  I intend to let that be configurable in the spec.
     -  Also add an option to include a setting to allow extra types of rooms that the user can define in their game.  0-9 are reserved, so 10-255 can be used to extend the generation.

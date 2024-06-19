@@ -122,18 +122,18 @@ impl Dungeon {
                 // self.wrap_room(end_room, end_y, end_x);
 
                 let placed_new = Room {
-                    height: 1,
-                    width: 1,
-                    x: start_x,
-                    y: start_y,
+                    height: 3,
+                    width: 3,
+                    x: start_x - 1,
+                    y: start_y - 1,
                     room_type: RoomType::Start,
                 };
 
                 let placed_end = Room {
-                    height: 1,
-                    width: 1,
-                    x: end_x,
-                    y: end_y,
+                    height: 3,
+                    width: 3,
+                    x: end_x - 1,
+                    y: end_y - 1,
                     room_type: RoomType::End,
                 };
                 self.placed_rooms.push(placed_new.clone());
@@ -623,6 +623,55 @@ impl Dungeon {
             println!();
         }
     }
+
+    fn reverse_grid_rows(&mut self) {
+        let mut new_grid: Vec<Vec<i32>> = Vec::new();
+        for row in self.grid.iter() {
+            let mut new_row: Vec<i32> = Vec::new();
+            for cell in row.iter().rev() {
+                new_row.push(*cell);
+            }
+            new_grid.push(new_row.clone());
+        }
+        self.grid = new_grid;
+    }
+
+    fn convert_rooms_to_raycast_format(&mut self) {
+        for room in &self.placed_rooms {
+            let x = room.x;
+            let y = room.y;
+            let width = room.width;
+            let height = room.height;
+            let room_type = room.room_type;
+            for i in 0..height {
+                for j in 0..width {
+                    if self.grid[(y + i) as usize][(x + j) as usize]
+                        == RoomType::Wall.to_int() as i32
+                    {
+                        self.grid[(y + i) as usize][(x + j) as usize] = room_type.to_int() as i32;
+                    } else if self.grid[(y + i) as usize][(x + j) as usize]
+                        == room_type.to_int() as i32
+                    {
+                        self.grid[(y + i) as usize][(x + j) as usize] = RoomType::Empty as i32;
+                    }
+                }
+            }
+        }
+
+        let width = self.width;
+        let height = self.height;
+        for i in 0..height {
+            for j in 0..width {
+                if self.grid[i as usize][j as usize] == RoomType::Hall.to_int() as i32
+                    || self.grid[i as usize][j as usize] == RoomType::LockedDoor.to_int() as i32
+                {
+                    self.grid[(i) as usize][(j) as usize] = RoomType::Empty as i32;
+                } else if self.grid[i as usize][j as usize] == RoomType::Wall.to_int() as i32 {
+                    self.grid[(i) as usize][(j) as usize] = RoomType::Wall as i32;
+                }
+            }
+        }
+    }
 }
 
 fn distance((x1, y1): (u32, u32), (x2, y2): (u32, u32)) -> f64 {
@@ -635,7 +684,7 @@ pub fn connected(d: Dungeon) -> bool {
     d.are_start_and_end_connected()
 }
 
-fn gen_floor(paramaters: &paramaters::DungeonOptions) -> Option<Dungeon> {
+fn gen_floor(paramaters: &paramaters::DungeonOptions, format: String) -> Option<Dungeon> {
     let mut d = Dungeon::new(&paramaters);
     let mut rng = rand::thread_rng();
 
@@ -670,6 +719,7 @@ fn gen_floor(paramaters: &paramaters::DungeonOptions) -> Option<Dungeon> {
     }
     d.fill_with_walls();
     d.connect_regions();
+
     let connected = d.are_start_and_end_connected();
     if !connected {
         return None;
@@ -680,6 +730,11 @@ fn gen_floor(paramaters: &paramaters::DungeonOptions) -> Option<Dungeon> {
     }
     d.painter.paint();
 
+    if format == "raycast" {
+        d.convert_rooms_to_raycast_format();
+        d.reverse_grid_rows();
+    }
+
     Some(d)
 }
 
@@ -689,7 +744,7 @@ pub fn new_dungeon(paramaters: &paramaters::DungeonParameters) -> Vec<Vec<Dungeo
     for i in 0..paramaters.dungeons.len() {
         let mut floors: Vec<Dungeon> = Vec::new();
         while floors.len() < paramaters.dungeons[i].count as usize {
-            let d = gen_floor(&paramaters.dungeons[i]);
+            let d = gen_floor(&paramaters.dungeons[i], paramaters.output_format.clone());
             if d.is_some() {
                 floors.push(d.unwrap());
             }
