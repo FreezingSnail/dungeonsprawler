@@ -47,9 +47,12 @@ struct Room {
 pub struct Dungeon {
     rooms: Vec<Room>,
     placed_rooms: Vec<Room>,
-    height: u32,
-    width: u32,
+    pub height: u32,
+    pub width: u32,
     pub grid: Vec<Vec<i32>>,
+    pub raycast_grid: Vec<Vec<i32>>,
+    pub start_x: u32,
+    pub start_y: u32,
     regions_count: i32,
     regions: Vec<Vec<u32>>,
     painter: painter::Painter,
@@ -61,6 +64,7 @@ impl Dungeon {
         let height = parameters.height;
         let rooms = Vec::new();
         let grid = vec![vec![0; width as usize]; height as usize];
+        let raycast_grid = vec![vec![0; width as usize]; height as usize];
 
         let regions = vec![vec![0; width as usize]; height as usize];
 
@@ -70,8 +74,11 @@ impl Dungeon {
             height,
             width,
             grid,
+            raycast_grid,
             regions_count: 0,
             regions,
+            start_x: 0,
+            start_y: 0,
             painter: painter::Painter::new(),
         }
     }
@@ -88,8 +95,8 @@ impl Dungeon {
         let mut trys = 0;
         while !valid_placement && trys < attempts {
             trys += 1;
-            let start_x = rng.gen_range(1..self.width - 1);
-            let start_y = rng.gen_range(1..self.height - 1);
+            let start_x = rng.gen_range(4..self.width - 4);
+            let start_y = rng.gen_range(4..self.height - 4);
             let end_x = rng.gen_range(1..self.width - 1);
             let end_y = rng.gen_range(1..self.height - 1);
             let x: i32 = (start_x as i32 - end_x as i32) as i32;
@@ -104,22 +111,8 @@ impl Dungeon {
                 self.regions_count += 1;
                 self.regions[end_y as usize][end_x as usize] = self.regions_count as u32;
 
-                let start_room = &Room {
-                    height: 1,
-                    width: 1,
-                    x: end_x,
-                    y: end_y,
-                    room_type: RoomType::Start,
-                };
-                // self.wrap_room(start_room, start_y, start_x);
-                let end_room = &Room {
-                    height: 1,
-                    width: 1,
-                    x: end_x,
-                    y: end_y,
-                    room_type: RoomType::End,
-                };
-                // self.wrap_room(end_room, end_y, end_x);
+                self.start_x = start_x;
+                self.start_y = start_y;
 
                 let placed_new = Room {
                     height: 3,
@@ -626,17 +619,18 @@ impl Dungeon {
 
     fn reverse_grid_rows(&mut self) {
         let mut new_grid: Vec<Vec<i32>> = Vec::new();
-        for row in self.grid.iter() {
+        for row in self.raycast_grid.iter() {
             let mut new_row: Vec<i32> = Vec::new();
             for cell in row.iter().rev() {
                 new_row.push(*cell);
             }
             new_grid.push(new_row.clone());
         }
-        self.grid = new_grid;
+        self.raycast_grid = new_grid;
     }
 
     fn convert_rooms_to_raycast_format(&mut self) {
+        self.raycast_grid = self.grid.clone();
         for room in &self.placed_rooms {
             let x = room.x;
             let y = room.y;
@@ -645,14 +639,16 @@ impl Dungeon {
             let room_type = room.room_type;
             for i in 0..height {
                 for j in 0..width {
-                    if self.grid[(y + i) as usize][(x + j) as usize]
+                    if self.raycast_grid[(y + i) as usize][(x + j) as usize]
                         == RoomType::Wall.to_int() as i32
                     {
-                        self.grid[(y + i) as usize][(x + j) as usize] = room_type.to_int() as i32;
-                    } else if self.grid[(y + i) as usize][(x + j) as usize]
+                        self.raycast_grid[(y + i) as usize][(x + j) as usize] =
+                            room_type.to_int() as i32;
+                    } else if self.raycast_grid[(y + i) as usize][(x + j) as usize]
                         == room_type.to_int() as i32
                     {
-                        self.grid[(y + i) as usize][(x + j) as usize] = RoomType::Empty as i32;
+                        self.raycast_grid[(y + i) as usize][(x + j) as usize] =
+                            RoomType::Empty as i32;
                     }
                 }
             }
@@ -662,12 +658,15 @@ impl Dungeon {
         let height = self.height;
         for i in 0..height {
             for j in 0..width {
-                if self.grid[i as usize][j as usize] == RoomType::Hall.to_int() as i32
-                    || self.grid[i as usize][j as usize] == RoomType::LockedDoor.to_int() as i32
+                if self.raycast_grid[i as usize][j as usize] == RoomType::Hall.to_int() as i32
+                    || self.raycast_grid[i as usize][j as usize]
+                        == RoomType::LockedDoor.to_int() as i32
                 {
-                    self.grid[(i) as usize][(j) as usize] = RoomType::Empty as i32;
-                } else if self.grid[i as usize][j as usize] == RoomType::Wall.to_int() as i32 {
-                    self.grid[(i) as usize][(j) as usize] = RoomType::Wall as i32;
+                    self.raycast_grid[(i) as usize][(j) as usize] = RoomType::Empty as i32;
+                } else if self.raycast_grid[i as usize][j as usize]
+                    == RoomType::Wall.to_int() as i32
+                {
+                    self.raycast_grid[(i) as usize][(j) as usize] = RoomType::Wall as i32;
                 }
             }
         }

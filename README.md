@@ -69,19 +69,24 @@ Note, the room_size_low and room_size_high values dictate a range used for rando
 - "fx"
     - This will output a .txt for each dungeon spec that contains the maps as uint8_t arrays, and a uint24_t array of pointers to each floor for easy indexing
 
-    - The tile numbers map to the following types from generation:
-    ```
-        Empty => 0
-        Wall => 1
-        Hall => 2
-        Start => 3
-        End => 4
-        Boss => 5
-        Shop => 6
-        Treasure => 7
-        Secret => 8
-        LockedDoor => 9
-    ```
+- "raycast"
+    - this will adjust the map, wrapping each room with its associated value, and making all traversable space 0 value.  ATM it erases locked door tiles.
+
+- The tile numbers map to the following types from generation:
+```
+    Empty => 0
+    Wall => 1
+    Hall => 2
+    Start => 3
+    End => 4
+    Boss => 5
+    Shop => 6
+    Treasure => 7
+    Secret => 8
+    LockedDoor => 9
+```
+
+
 
 ### Generation details:
 
