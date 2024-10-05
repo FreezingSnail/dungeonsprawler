@@ -1,3 +1,4 @@
+use rand::seq::SliceRandom;
 use rand::Rng;
 use std::collections::{HashMap, HashSet};
 
@@ -686,24 +687,40 @@ pub fn connected(d: Dungeon) -> bool {
 fn gen_floor(paramaters: &paramaters::DungeonOptions, format: String) -> Option<Dungeon> {
     let mut d = Dungeon::new(&paramaters);
     let mut rng = rand::thread_rng();
-
-    d.painter.add_step(d.grid.clone());
     d.place_start_and_end();
 
     for _ in 0..paramaters.amount_of_rooms {
-        let room = Room {
+        let room_type = paramaters.room_types.choose(&mut rng).unwrap();
+        let mut room = Room {
             height: rng.gen_range(paramaters.room_size_low..paramaters.room_size_high),
             width: rng.gen_range(paramaters.room_size_low..paramaters.room_size_high),
             x: 0,
             y: 0,
-            room_type: match rng.gen_range(4..=7) {
-                4 => RoomType::Boss,
-                5 => RoomType::Shop,
-                6 => RoomType::Treasure,
-                7 => RoomType::Secret,
-                _ => RoomType::Wall,
-            },
+            room_type: RoomType::Empty,
         };
+        match room_type.as_str() {
+            "start" => {
+                room.room_type = RoomType::Start;
+            }
+            "end" => {
+                room.room_type = RoomType::End;
+            }
+            "boss" => {
+                room.room_type = RoomType::Boss;
+            }
+            "shop" => {
+                room.room_type = RoomType::Shop;
+            }
+            "treasure" => {
+                room.room_type = RoomType::Treasure;
+            }
+            "secret" => {
+                room.room_type = RoomType::Secret;
+            }
+            _ => {
+                room.room_type = RoomType::Empty;
+            }
+        }
         d.add_room(room);
     }
 
@@ -754,7 +771,8 @@ pub fn new_dungeon(paramaters: &paramaters::DungeonParameters) -> Vec<Vec<Dungeo
     if paramaters.include_images {
         for (i, d) in dungeons.iter().enumerate() {
             for (j, d) in d.iter().enumerate() {
-                let name = format!("dungeon_{}{}.png", paramaters.dungeons[i].name, j);
+                let name = format!("images/dungeon_{}{}.png", paramaters.dungeons[i].name, j);
+                std::fs::create_dir_all(paramaters.file_path.clone() + "images/");
                 let name = paramaters.file_path.clone() + &name;
                 d.painter.paint_image(&d.grid, &name);
             }

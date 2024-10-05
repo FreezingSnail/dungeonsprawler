@@ -145,7 +145,7 @@ fn lua_addr_pairs(name: &String) -> String {
         "
 field(\"{}_pairs\")
 for i,d in ipairs(test_dungeon_raycast) do
-    write(bytes({{{}_pointers[i],{}_raycast_pointers[i]}}, \"uint32\"))
+    write(bytes({{{}_pointers[i],{}_raycast_pointers[i]}}, \"uint24\"))
 end
     ",
         name, name, name

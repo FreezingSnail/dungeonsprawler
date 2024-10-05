@@ -2,9 +2,9 @@
     "dungeons": [
       {
         "name": "test_dungeon",
-        "height": 64,
-        "width": 64,
-        "room_types": [],
+        "height": 9,
+        "width": 9,
+        "room_types": ["treasure"],
         "extra_room_types": 0,
         "amount_of_rooms": 30,
         "room_size_low": 3,
@@ -16,6 +16,6 @@
       }
     ],
     "file_path": "example/",
-    "output_format": "fx",
+    "output_format": "raycast",
     "include_images": true
 }

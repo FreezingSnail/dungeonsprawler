@@ -30,12 +30,14 @@ fn main() {
 
     for (i, dungeon) in d.iter().enumerate() {
         let name = params.dungeons[i].name.clone();
-        exporter::write_dungeons_to_file(&dungeon, &name, &outpath, false).unwrap();
+
         if params.output_format == "raycast" {
-            let name = params.dungeons[i].name.clone() + "_raycast";
-            exporter::write_dungeons_to_file(&dungeon, &name, &outpath, true).unwrap();
+            // let name = params.dungeons[i].name.clone() + "_raycast";
+            // exporter::write_dungeons_to_file(&dungeon, &name, &outpath, true).unwrap();
             let name = params.dungeons[i].name.clone();
             exporter::write_dungeons_to_lua(&dungeon, &name, &outpath).unwrap();
+        } else {
+            exporter::write_dungeons_to_file(&dungeon, &name, &outpath, false).unwrap();
         }
     }
 }
